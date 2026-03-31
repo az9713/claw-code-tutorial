@@ -82,6 +82,10 @@ def execute_tool(name: str, payload: str = '') -> ToolExecution:
     module = get_tool(name)
     if module is None:
         return ToolExecution(name=name, source_hint='', payload=payload, handled=False, message=f'Unknown mirrored tool: {name}')
+    from .tool_implementations import dispatch_tool
+    result = dispatch_tool(module.name, payload)
+    if result is not None:
+        return ToolExecution(name=module.name, source_hint=module.source_hint, payload=payload, handled=True, message=result)
     action = f"Mirrored tool '{module.name}' from {module.source_hint} would handle payload {payload!r}."
     return ToolExecution(name=module.name, source_hint=module.source_hint, payload=payload, handled=True, message=action)
 
