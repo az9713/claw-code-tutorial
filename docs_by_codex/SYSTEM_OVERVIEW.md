@@ -24,9 +24,17 @@
 
 ## What It Does Not Yet Do
 
-- Execute real command/tool implementations from archived source
-- Provide real remote/SSH/teleport connectivity (currently placeholders)
-- Enforce advanced authn/authz, tenancy, or encrypted persistence
+**This is a partial port — an architectural skeleton, not a complete implementation.**
+
+- **Execute real tool/command logic** — all 207 commands and 184 tools return placeholder strings when called. `TeamCreateTool`, `TaskCreateTool`, all 18 AgentTool modules, `spawnMultiAgent`, `BashTool`, `FileReadTool`, `FileEditTool`, and every other named tool are stubs only.
+- **Run real agents** — `runAgent`, `forkSubagent`, `resumeAgent`, `spawnMultiAgent` are inventory entries; no agent execution happens.
+- **Create teams** — `TeamCreateTool`, `TeamDeleteTool`, and `SendMessageTool` do nothing when invoked.
+- **Implement subsystem logic** — all 30 packages (`utils`, `components`, `services`, `hooks`, etc.) load only JSON metadata; none contain ported code.
+- **Include the TypeScript archive** — the original source is expected at `archive/claude_code_ts_snapshot/src/` but is not present. `PortContext.archive_available` will be `False` on a fresh clone.
+- **Provide real remote/SSH/teleport connectivity** — mode simulators return placeholder reports only.
+- **Enforce advanced authn/authz, tenancy, or encrypted persistence.**
+
+The parity ratio (`python3 -m src.main parity-audit`) quantifies coverage: the Python port covers scaffolding and routing only against the 1,902-file TypeScript surface.
 
 ## Repository Structure
 

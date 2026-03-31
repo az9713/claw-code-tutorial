@@ -2,6 +2,9 @@
 
 Quick reference for all Claw Code documentation.
 
+> **Porting status: this is an architectural skeleton, not a complete implementation.**
+> All 207 commands and 184 tools are stubs that return placeholders. All 30 subsystem packages load only JSON metadata. `TeamCreateTool`, `TaskCreateTool`, all AgentTool modules, and `spawnMultiAgent` do nothing when called. The original TypeScript source is not included. See [Architecture § Porting Status](ARCHITECTURE.md#porting-status) for the full breakdown.
+
 > **Two documentation suites exist in this repository:**
 > - `docs/` (this suite) — detailed reference documentation with full dataclass field tables, complete API signatures, and comprehensive examples.
 > - `docs_by_codex/` — concise operational documentation generated on 2026-03-31, with a maintenance standard, ADR backlog, operations runbook, and roadmap. See [`docs_by_codex/README.md`](../docs_by_codex/README.md) for its index.

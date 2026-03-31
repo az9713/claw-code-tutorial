@@ -16,6 +16,50 @@ Claw Code is a clean-room Python rewrite of the Claude Code agent harness. It mi
 
 ---
 
+## Porting Status
+
+**This is a partial port — an architectural skeleton, not a complete implementation.**
+
+### What is real and working
+
+| Component | Files | Status |
+|-----------|-------|--------|
+| CLI dispatcher | `src/main.py` | Fully working — all 22 subcommands route correctly |
+| Prompt routing | `src/runtime.py` | Fully working — token-scoring algorithm, bash gating |
+| Turn engine | `src/query_engine.py` | Fully working — budget enforcement, streaming, compaction |
+| Session persistence | `src/session_store.py` | Fully working — saves/loads `.port_sessions/*.json` |
+| Transcript store | `src/transcript.py` | Fully working — sliding window compaction |
+| Permission model | `src/permissions.py` | Fully working — deny-name and deny-prefix filtering |
+| Parity audit | `src/parity_audit.py` | Fully working — coverage metrics against archive surface |
+| Setup/prefetch/deferred init | `src/setup.py`, `src/prefetch.py`, `src/deferred_init.py` | Fully working — simulated, not real system calls |
+
+### What is a stub (placeholder only)
+
+| Component | Count | What happens when called |
+|-----------|-------|--------------------------|
+| Mirrored commands | 207 | Returns a placeholder string — no real logic |
+| Mirrored tools | 184 | Returns a placeholder string — no real logic |
+| 30 subsystem packages | e.g. `src/utils/`, `src/components/` | Load metadata from JSON only — no implementations |
+| `TeamCreateTool` / `TeamDeleteTool` / `SendMessageTool` | 3 | Stubs — team creation does nothing |
+| `TaskCreateTool` / `TaskGetTool` / etc. | 6 | Stubs — task management does nothing |
+| All 18 AgentTool modules | 18 | Stubs — no real agent execution |
+| `spawnMultiAgent` | 1 | Stub — no parallel agent launch |
+| `BashTool` / `FileReadTool` / `FileEditTool` | 3 | Named in simple mode but execute placeholders |
+| Remote/SSH/teleport/direct-connect modes | 5 | Placeholder reports — no network connections |
+
+### What is missing entirely
+
+- **The original TypeScript source** — expected at `archive/claude_code_ts_snapshot/src/` but not included. `PortContext.archive_available` will be `False` on any fresh clone.
+- **Real tool implementations** — none of the 184 tools perform their described function.
+- **Subsystem logic** — `utils` (564 modules), `components` (389), `services` (130), `hooks` (104), and 26 more packages contain no ported code.
+- **Agent execution** — `runAgent`, `forkSubagent`, `resumeAgent`, `loadAgentsDir` are inventory entries only.
+
+### Parity ratio
+
+Run `python3 -m src.main parity-audit` to see current coverage. The `total_file_ratio` compares ported Python files against 1,902 TypeScript files in the archived surface. On a fresh clone, the ratio is very low — the port covers scaffolding and routing only.
+
+---
+
 ## High-Level Structure
 
 ```
