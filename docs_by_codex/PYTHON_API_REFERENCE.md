@@ -73,6 +73,34 @@ Primary exported symbols:
   - `execute_tool(name, payload='')`
   - `render_tool_index(limit=20, query=None)`
 
+### Tool Implementations (`src/tool_implementations/`)
+
+- `TOOL_DISPATCH: dict[str, Callable[[str], str]]` — maps tool name to handler
+- `dispatch_tool(name: str, payload: str) -> str | None` — invokes handler or returns `None`
+
+### Command Implementations (`src/command_implementations/`)
+
+- `COMMAND_DISPATCH: dict[str, Callable[[str], str]]` — maps command name to handler
+- `dispatch_command(name: str, prompt: str) -> str | None` — invokes handler or returns `None`
+
+### State Store (`src/stores.py`)
+
+- Dataclasses (all `frozen=True`):
+  - `TaskRecord` — task_id, name, description, status, output
+  - `TeamRecord` — team_id, name, member_names
+  - `AgentRecord` — agent_id, prompt, status, result, parent_id
+  - `TodoItem` — todo_id, content, done
+  - `CronEntry` — cron_id, schedule, command
+- Task CRUD: `create_task`, `get_task`, `list_tasks`, `update_task`, `record_task_output`, `stop_task`
+- Team CRUD: `create_team`, `get_team`, `list_teams`, `delete_team`
+- Agent CRUD: `create_agent`, `get_agent`, `list_agents`, `complete_agent`
+- Todo CRUD: `create_todo`, `get_todo`, `list_todos`, `complete_todo`, `delete_todo`
+- Cron CRUD: `create_cron`, `list_crons`, `delete_cron`
+- Config: `get_config(key, default='')`, `set_config(key, value)`, `all_config()`
+- Mode flags: `get_mode_flag(key)`, `set_mode_flag(key, value)`
+
+State is in-memory only — all stores reset on process exit.
+
 ## Session APIs
 
 ### `src/transcript.py`
@@ -179,3 +207,74 @@ The following files mirror TypeScript originals from the archive root and are tr
 | `src/dialogLaunchers.py` | `DialogLauncher`, `DEFAULT_DIALOGS` |
 | `src/costHook.py` | `apply_cost_hook(tracker, label, units)` |
 | `src/projectOnboardingState.py` | `ProjectOnboardingState` |
+
+## Active Implementation Modules
+
+The following modules go beyond mirroring — they contain real Python logic used at runtime:
+
+| Module | Purpose |
+|--------|---------|
+| `src/stores.py` | In-memory CRUD store for tasks, teams, agents, todos, crons, config, mode flags |
+| `src/tool_implementations/` | Handler package; `TOOL_DISPATCH` dict + `dispatch_tool()` |
+| `src/command_implementations/` | Handler package; `COMMAND_DISPATCH` dict + `dispatch_command()` |
+
+---
+
+## Dispatcher Pattern
+
+Tool and command execution follows a three-layer call chain:
+
+```
+execute_tool(name, payload)          # src/tools.py
+    └── dispatch_tool(name, payload) # src/tool_implementations/__init__.py
+            └── handler(payload)     # e.g. src/tool_implementations/bash_tool.py
+```
+
+And the equivalent for commands:
+
+```
+execute_command(name, prompt)          # src/commands.py
+    └── dispatch_command(name, prompt) # src/command_implementations/__init__.py
+            └── handler(prompt)        # e.g. src/command_implementations/core_commands.py
+```
+
+### Layer responsibilities
+
+**`execute_tool` / `execute_command`** (`src/tools.py`, `src/commands.py`)
+
+Resolves the name against the snapshot registry (`tools_snapshot.json` / `commands_snapshot.json`). Returns a `ToolExecution` / `CommandExecution` dataclass. If the name is unknown, returns `handled=False`. Otherwise calls the dispatcher.
+
+**`dispatch_tool` / `dispatch_command`** (`src/tool_implementations/__init__.py`, `src/command_implementations/__init__.py`)
+
+Performs a dict lookup against `TOOL_DISPATCH` / `COMMAND_DISPATCH`. Returns the handler's string result, or `None` if no handler is registered. A `None` result causes the caller to emit a mirrored-stub placeholder instead of a real response.
+
+**Handler functions** (individual files under `src/tool_implementations/` and `src/command_implementations/`)
+
+Receive a raw `payload: str` (tools) or `prompt: str` (commands) and return a `str`. Handlers parse their own payload (typically JSON) and may call `src/stores.py` CRUD functions to read or write in-memory state.
+
+### Example: adding a real handler
+
+```python
+# src/tool_implementations/my_tool.py
+from __future__ import annotations
+import json
+from .. import stores
+
+
+def handle_my_tool(payload: str) -> str:
+    params = json.loads(payload) if payload.strip() else {}
+    record = stores.create_task(params.get("name", ""), params.get("description", ""))
+    import dataclasses
+    return json.dumps(dataclasses.asdict(record), indent=2)
+```
+
+Then in `src/tool_implementations/__init__.py`:
+
+```python
+from .my_tool import handle_my_tool
+
+TOOL_DISPATCH: dict[str, object] = {
+    # existing entries ...
+    "MyTool": handle_my_tool,
+}
+```

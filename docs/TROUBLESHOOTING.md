@@ -166,6 +166,95 @@ python3 -m src.main tools --simple-mode
 
 ---
 
+## BashTool returns security warning instead of running command
+
+**Symptom:** `exec-tool BashTool` prints an error like `Error: Command blocked for safety reasons (matched pattern: 'rm -rf /')`.
+
+**Cause:** The command matched one of the patterns on the security blocklist in `src/tool_implementations/bash_tool.py`:
+- `rm -rf /`
+- `rm -fr /`
+- `mkfs`
+- `dd if=/dev/`
+- `:(){:|:&};:` (fork bomb)
+
+**Fix:** Use a safer equivalent command. For example, to delete a specific directory, target it explicitly rather than using `/` as the root.
+
+---
+
+## FileEditTool returns "old_string not found" or "multiple matches"
+
+**Symptom:** `exec-tool FileEditTool` prints `Error: old_string not found in <file>` or `Error: old_string appears N times in <file>`.
+
+**Cause:** `FileEditTool` requires `old_string` to match **exactly once** in the file. If it matches zero times the edit is rejected; if it matches more than once the edit is also rejected (to prevent ambiguous replacements).
+
+**Fix:**
+- If the string is not found: check for trailing whitespace, encoding differences, or line-ending mismatches.
+- If there are multiple matches: provide a longer `old_string` with more surrounding context to make it unique.
+- To intentionally replace all occurrences, add `"replace_all": true` to the payload:
+
+```bash
+python3 -m src.main exec-tool FileEditTool \
+  '{"file_path": "src/foo.py", "old_string": "old", "new_string": "new", "replace_all": true}'
+```
+
+---
+
+## TaskCreateTool creates task but TaskListTool returns empty
+
+**Symptom:** `exec-tool TaskCreateTool` succeeds and returns a task record, but a subsequent `exec-tool TaskListTool ''` shows no tasks.
+
+**Cause:** The in-memory store (`src/stores.py`) is per-process. Every `python3 -m src.main` invocation starts a fresh process with an empty store. Tasks created in one invocation are not visible in the next.
+
+**Fix:** For multi-step task workflows, use the Python API directly within a single process rather than chaining CLI calls:
+
+```python
+from src.tool_implementations import dispatch_tool
+
+dispatch_tool("TaskCreateTool", '{"title": "My task", "description": "Do something"}')
+result = dispatch_tool("TaskListTool", "")
+print(result)
+```
+
+---
+
+## TeamCreateTool / spawnMultiAgent — agents don't actually run
+
+**Symptom:** `TeamCreateTool` or `spawnMultiAgent` return records with IDs, but no subagent processes appear and no LLM calls are made.
+
+**Cause:** Agent tools are implemented as honest stubs. They record intent in `stores._agents` and `stores._teams` and return IDs immediately, but do not spawn real LLM sub-processes or make any API calls.
+
+**Fix:** This is by design for the current Python port. To extend with real agent behaviour, integrate an Anthropic API client in `src/tool_implementations/agent_tools.py` and replace the `stores.complete_agent()` call with an actual model invocation.
+
+---
+
+## WebFetchTool returns "URL error" or timeout
+
+**Symptom:** `exec-tool WebFetchTool` prints an error containing `URL error` or `timed out after 30s`.
+
+**Cause candidates:**
+1. The network is unavailable or the host is unreachable.
+2. The URL is malformed (missing scheme, typo in hostname).
+3. The request exceeded the 30-second timeout.
+
+**Fix:**
+- Verify the URL is reachable from the machine running the CLI.
+- Confirm the URL includes a scheme (`https://`).
+- For slow endpoints, increase the timeout via the payload: `{"url": "...", "timeout": 60}`.
+
+---
+
+## ConfigTool changes lost after restart
+
+**Symptom:** Config keys set with `ConfigTool` or `exec-command config` are not available in the next CLI invocation.
+
+**Cause:** The config store (`stores._config`) is an in-memory dict. It is reset to empty on every process start — nothing is written to disk.
+
+**Fix:**
+- Re-apply config settings at the start of each session.
+- For persistent config, extend `src/stores.py` with file-backed persistence (e.g. read/write a JSON file on load/set).
+
+---
+
 ## Debugging the bootstrap process
 
 To inspect each stage of bootstrap without running a full session:

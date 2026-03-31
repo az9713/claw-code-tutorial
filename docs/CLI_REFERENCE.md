@@ -224,30 +224,136 @@ python3 -m src.main turn-loop "review MCP tool" --max-turns 2 --structured-outpu
 
 ### `exec-command`
 
-Executes a command shim by exact name against a prompt.
+Executes a command handler by exact name against a prompt.
 
 ```bash
 python3 -m src.main exec-command <name> <prompt>
 ```
 
-Exit code `0` if `handled=True`, `1` if not. The shim currently returns a placeholder message.
+Exit code `0` if `handled=True`, `1` if not.
+
+**17 commands now execute real logic** via `COMMAND_DISPATCH` in `src/command_implementations/`:
+
+| Command | Status | Notes |
+|---------|--------|-------|
+| `help` | Implemented | Prints available commands |
+| `version` | Implemented | Prints version string |
+| `clear` | Implemented | Clears session state |
+| `compact` | Implemented | Compacts transcript |
+| `status` | Implemented | Shows mode flags and store counts |
+| `cost` | Implemented | Reports token usage |
+| `model` | Implemented | Gets/sets model from config store |
+| `memory` | Implemented | Reports memory state |
+| `session` | Implemented | Shows current session info |
+| `summary` | Implemented | Summarises session |
+| `doctor` | Implemented | Runs environment diagnostics |
+| `config` | Implemented | Gets/sets in-memory config keys |
+| `permissions` | Implemented | Reports permission context |
+| `hooks` | Implemented | Lists registered hooks |
+| `skills` | Implemented | Lists loaded skills |
+| `mcp` | Implemented | Reports MCP server status |
+| `tasks` | Implemented | Lists porting tasks |
+| *(all others)* | Stub | Returns a fallthrough placeholder message |
+
+Commands with no registered handler return a stub message and exit with code `1`.
+
+**Examples**
 
 ```bash
+# Implemented command — real output
+python3 -m src.main exec-command help ""
+# Output: lists all registered commands
+
+python3 -m src.main exec-command version ""
+# Output: claw-code 0.1.0 (Python port)
+
+python3 -m src.main exec-command doctor ""
+# Output: Python version, platform, and environment checks
+
+# Unimplemented command — stub fallthrough
 python3 -m src.main exec-command review "inspect security review"
+# Output: [stub] Command 'review' received prompt: inspect security review
+# Exit code: 1
 ```
 
 ---
 
 ### `exec-tool`
 
-Executes a tool shim by exact name against a payload string.
+Executes a tool handler by exact name against a payload string.
 
 ```bash
 python3 -m src.main exec-tool <name> <payload>
 ```
 
+**33 tools now execute real logic** via `TOOL_DISPATCH` in `src/tool_implementations/`. All others return a stub message.
+
+#### Implemented tools
+
+| Tool | Category | Notes |
+|------|----------|-------|
+| `BashTool` | Shell | Runs command via subprocess; security blocklist applied |
+| `FileReadTool` | File I/O | Returns file content with line numbers |
+| `FileWriteTool` | File I/O | Writes content to file |
+| `FileEditTool` | File I/O | Exact-match string replacement; uniqueness enforced |
+| `GlobTool` | File I/O | Pattern-based file search |
+| `GrepTool` | File I/O | Regex content search |
+| `TaskCreateTool` | Tasks | Creates TaskRecord in in-memory store |
+| `TaskGetTool` | Tasks | Retrieves task by ID |
+| `TaskListTool` | Tasks | Lists all tasks in store |
+| `TaskUpdateTool` | Tasks | Updates task fields |
+| `TaskOutputTool` | Tasks | Returns task output |
+| `TaskStopTool` | Tasks | Marks task stopped |
+| `TeamCreateTool` | Teams | Creates TeamRecord in store |
+| `TeamDeleteTool` | Teams | Removes TeamRecord from store |
+| `SendMessageTool` | Teams | Logs message against a team |
+| `AgentTool` | Agents | Creates AgentRecord; returns agent_id |
+| `runAgent` | Agents | Creates AgentRecord and marks completed |
+| `forkSubagent` | Agents | Creates child AgentRecord with parent_id |
+| `spawnMultiAgent` | Agents | Creates multiple AgentRecords in parallel |
+| `WebFetchTool` | Web | Fetches URL content; 30s timeout |
+| `WebSearchTool` | Web | Performs web search |
+| `AskUserQuestionTool` | User | Prompts for user input |
+| `TodoWriteTool` | Todos | Writes todo list to store |
+| `ConfigTool` | Config | Gets/sets in-memory config keys |
+| `ToolSearchTool` | Registry | Searches tool inventory |
+| `EnterPlanModeTool` | Modes | Sets plan_mode=True in store |
+| `ExitPlanModeV2Tool` | Modes | Sets plan_mode=False in store |
+| `EnterWorktreeTool` | Modes | Sets worktree_mode=True in store |
+| `ExitWorktreeTool` | Modes | Sets worktree_mode=False in store |
+| `NotebookEditTool` | Notebooks | Edits Jupyter notebook cells |
+| `CronCreateTool` | Cron | Creates CronRecord in store |
+| `CronDeleteTool` | Cron | Removes CronRecord from store |
+| `CronListTool` | Cron | Lists all cron records |
+
+#### Payload format
+
+The payload argument is parsed as follows:
+1. **JSON string** — if the payload parses as a JSON object, keys are extracted as named parameters.
+2. **Empty string** — treated as an empty params dict `{}`.
+3. **Non-JSON fallback** — the raw string is passed as `{"input": payload}`.
+
+#### Examples
+
 ```bash
+# BashTool — returns actual command output
+python3 -m src.main exec-tool BashTool '{"command": "echo hello"}'
+# Output: hello
+
+# FileReadTool — returns file content with line numbers
+python3 -m src.main exec-tool FileReadTool '{"file_path": "src/main.py"}'
+# Output:     1  import argparse
+#             2  import sys
+#             ...
+
+# TaskCreateTool — returns JSON task record
+python3 -m src.main exec-tool TaskCreateTool '{"title": "Fix bug", "description": "Investigate crash"}'
+# Output: {"task_id": "t-a1b2c3", "title": "Fix bug", "status": "pending", ...}
+
+# Unregistered tool — stub fallthrough
 python3 -m src.main exec-tool MCPTool "fetch resource list"
+# Output: [stub] Tool 'MCPTool' received payload: fetch resource list
+# Exit code: 1
 ```
 
 ---

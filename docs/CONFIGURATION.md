@@ -188,6 +188,74 @@ python3 -m src.main setup-report
 
 ---
 
+## In-Memory Config Store
+
+`stores._config` is a plain dict maintained in `src/stores.py` for the duration of the current process. It is not written to disk and resets on every process restart.
+
+### Setting and reading config via `ConfigTool`
+
+```bash
+# Set a key
+python3 -m src.main exec-tool ConfigTool '{"action": "set", "key": "model", "value": "claude-opus-4-6"}'
+
+# Get a key
+python3 -m src.main exec-tool ConfigTool '{"action": "get", "key": "model"}'
+
+# List all keys
+python3 -m src.main exec-tool ConfigTool '{"action": "list"}'
+```
+
+### Setting config via the `config` command
+
+```bash
+python3 -m src.main exec-command config "model=claude-opus-4-6"
+```
+
+### Special config keys
+
+| Key | Used by | Notes |
+|-----|---------|-------|
+| `model` | `model` command | Returned by `exec-command model ""` |
+
+Because config is in-memory only, keys must be re-applied on each new CLI invocation. To persist config across sessions, either use the Python API directly or extend `src/stores.py` with file-backed persistence.
+
+---
+
+## Mode Flags
+
+Two boolean flags in `src/stores.py` track the active runtime mode. Both default to `False` and are reset on process restart.
+
+| Flag | Default | Set to True | Set to False |
+|------|---------|-------------|--------------|
+| `plan_mode` | `False` | `EnterPlanModeTool` | `ExitPlanModeV2Tool` |
+| `worktree_mode` | `False` | `EnterWorktreeTool` | `ExitWorktreeTool` |
+
+### Entering and exiting plan mode
+
+```bash
+python3 -m src.main exec-tool EnterPlanModeTool ''
+python3 -m src.main exec-tool ExitPlanModeV2Tool ''
+```
+
+### Entering and exiting worktree mode
+
+```bash
+python3 -m src.main exec-tool EnterWorktreeTool ''
+python3 -m src.main exec-tool ExitWorktreeTool ''
+```
+
+### Checking current mode state
+
+```bash
+python3 -m src.main exec-command status ""
+# Output includes:
+#   plan_mode: False
+#   worktree_mode: False
+#   (plus store record counts for tasks, teams, agents, etc.)
+```
+
+---
+
 ## Session Directory
 
 Sessions are persisted to `.port_sessions/` relative to the **current working directory** when the CLI or API call is made — not relative to the repository root. The directory is created automatically on first use.

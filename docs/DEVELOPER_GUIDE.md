@@ -202,6 +202,198 @@ The tests assert `len(PORTED_COMMANDS) >= 150` and `len(PORTED_TOOLS) >= 100`.
 
 ---
 
+## Adding a New Tool Implementation
+
+The tool dispatcher in `src/tool_implementations/` routes named tools to real Python handlers. Follow these steps to wire up a new handler.
+
+**Step 1** — Create (or locate) a handler file in `src/tool_implementations/`:
+
+```
+src/tool_implementations/my_tool.py
+```
+
+**Step 2** — Write the handler function with the required signature:
+
+```python
+from __future__ import annotations
+
+
+def handle_mytool(payload: str) -> str:
+    """Handle MyTool calls."""
+    import json
+    try:
+        params = json.loads(payload) if payload.strip() else {}
+    except json.JSONDecodeError:
+        params = {"input": payload}
+
+    # Implement tool logic here using params
+    result = {"status": "ok", "input": params}
+
+    return json.dumps(result, indent=2)
+```
+
+The handler receives the raw payload string and must return a string. Parsing defensively (empty payload, non-JSON payload) prevents hard crashes for malformed calls.
+
+**Step 3** — Import the handler in `src/tool_implementations/__init__.py`:
+
+```python
+from .my_tool import handle_mytool
+```
+
+**Step 4** — Add an entry to `TOOL_DISPATCH` in the same file:
+
+```python
+TOOL_DISPATCH: dict[str, object] = {
+    # ... existing entries ...
+    "MyTool": handle_mytool,
+}
+```
+
+The key must match the tool's `name` field exactly as it appears in `tools_snapshot.json`.
+
+**Step 5** — Write tests in `tests/test_tool_implementations.py`:
+
+```python
+def test_mytool_basic(self) -> None:
+    from src.tool_implementations import dispatch_tool
+    result = dispatch_tool("MyTool", '{"key": "value"}')
+    self.assertIsNotNone(result)
+    self.assertIn("ok", result)
+```
+
+**Step 6** — Verify end-to-end via the CLI:
+
+```bash
+python -m src.main exec-tool MyTool '{"key": "value"}'
+```
+
+A `handled=True` response confirms the dispatcher reached your handler.
+
+---
+
+## Adding a New Command Implementation
+
+The command dispatcher in `src/command_implementations/` routes slash-command names to real Python handlers. The process mirrors the tool pattern above.
+
+**Step 1** — Create (or locate) a handler file in `src/command_implementations/`:
+
+```
+src/command_implementations/my_commands.py
+```
+
+**Step 2** — Write the handler function:
+
+```python
+from __future__ import annotations
+
+
+def handle_my_command(prompt: str) -> str:
+    """Handle the /my-command slash command."""
+    return f"my-command received: {prompt!r}"
+```
+
+The handler receives the remainder of the slash-command line as `prompt` and returns a string displayed to the user.
+
+**Step 3** — Import in `src/command_implementations/__init__.py`:
+
+```python
+from .my_commands import handle_my_command
+```
+
+**Step 4** — Add to `COMMAND_DISPATCH`:
+
+```python
+COMMAND_DISPATCH: dict[str, object] = {
+    # ... existing entries ...
+    "my-command": handle_my_command,
+}
+```
+
+The key must match the command `name` in `commands_snapshot.json`.
+
+**Step 5** — Write tests:
+
+```python
+def test_my_command(self) -> None:
+    from src.command_implementations import dispatch_command
+    result = dispatch_command("my-command", "some input")
+    self.assertIsNotNone(result)
+```
+
+**Step 6** — Verify:
+
+```bash
+python -m src.main exec-command my-command "some input"
+```
+
+---
+
+## Using the State Store
+
+`src/stores.py` provides an in-memory store for tools that need to persist state across calls within a single process run. Use it when a tool needs to create, retrieve, or update records that other tools can later access.
+
+### When to use it
+
+- A tool creates a resource (task, agent, team, todo, cron entry) that a second tool needs to look up by ID.
+- A tool reads or writes configuration values shared across multiple calls.
+- A tool toggles a mode flag (`plan_mode`, `worktree_mode`) that other components observe.
+
+Do **not** use the store as a persistence layer — all state is lost on process restart. For durable storage, write to the filesystem or a session JSON file.
+
+### Importing
+
+```python
+from .. import stores
+```
+
+From inside a handler file under `src/tool_implementations/` or `src/command_implementations/`, the two-dot relative import resolves to `src/stores.py`.
+
+### Typical handler pattern
+
+```python
+from __future__ import annotations
+
+import dataclasses
+import json
+
+from .. import stores
+
+
+def handle_task_create(payload: str) -> str:
+    try:
+        params = json.loads(payload) if payload.strip() else {}
+    except json.JSONDecodeError:
+        params = {"input": payload}
+
+    name = params.get("name", "unnamed")
+    description = params.get("description", "")
+
+    record = stores.create_task(name, description)
+    return json.dumps(dataclasses.asdict(record), indent=2)
+```
+
+Key points:
+
+- Call the appropriate CRUD function (`create_task`, `get_task`, `list_tasks`, etc.).
+- Serialise the returned dataclass with `dataclasses.asdict()` before passing to `json.dumps()`.
+- All store functions return `None` on a not-found lookup — handle that case before serialising.
+
+### Available stores
+
+| Store | Key functions |
+|-------|--------------|
+| Tasks | `create_task`, `get_task`, `list_tasks`, `update_task`, `record_task_output`, `stop_task` |
+| Teams | `create_team`, `get_team`, `list_teams`, `delete_team` |
+| Agents | `create_agent`, `get_agent`, `list_agents`, `complete_agent` |
+| Todos | `create_todo`, `get_todo`, `list_todos`, `complete_todo`, `delete_todo` |
+| Crons | `create_cron`, `list_crons`, `delete_cron` |
+| Config | `get_config`, `set_config`, `all_config` |
+| Mode flags | `get_mode_flag`, `set_mode_flag` |
+
+See `docs/API_REFERENCE.md` — "State Store" section — for full signatures and field descriptions.
+
+---
+
 ## Writing Tests
 
 Tests live in `tests/test_porting_workspace.py` and use Python's built-in `unittest`.

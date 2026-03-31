@@ -34,7 +34,8 @@ This document is a full extraction of everything the codebase reveals about agen
 26. [Application State for Multi-Agent Views](#26-application-state-for-multi-agent-views)
 27. [Complete Tool Inventory: Agent-Related Tools](#27-complete-tool-inventory-agent-related-tools)
 28. [Complete Command Inventory: Agent-Related Commands](#28-complete-command-inventory-agent-related-commands)
-29. [Architectural Summary](#29-architectural-summary)
+29. [Current Agent Implementation State](#29-current-agent-implementation-state)
+30. [Architectural Summary](#30-architectural-summary)
 
 ---
 
@@ -1120,7 +1121,75 @@ The duplication (same name, two files) is the standard pattern: `index.ts` is th
 
 ---
 
-## 29. Architectural Summary
+## 29. Current Agent Implementation State
+
+This section describes what is actually implemented in the Python port as of the current codebase, distinct from the TypeScript architecture described elsewhere in this document.
+
+### What works now
+
+Agent and team tools are implemented as **honest stubs**: they record intent in the in-memory store and return structured results immediately, but do not spawn real LLM sub-processes.
+
+#### Agent creation and ID assignment
+
+`AgentTool`, `runAgent`, and `forkSubagent` all create `AgentRecord` entries in `stores._agents` via `stores.create_agent()` and return a JSON response including `agent_id`.
+
+```bash
+python3 -m src.main exec-tool AgentTool '{"prompt": "Summarise the repo"}'
+# Output: {"agent_id": "agt-a1b2c3", "status": "pending", "prompt": "Summarise the repo"}
+
+python3 -m src.main exec-tool forkSubagent '{"prompt": "Run tests", "parent_agent_id": "agt-a1b2c3"}'
+# Output: {"agent_id": "agt-d4e5f6", "parent_id": "agt-a1b2c3", "status": "pending"}
+```
+
+`runAgent` additionally calls `stores.complete_agent()`, marking the record with `status="completed"` and a synthetic result string.
+
+#### Parallel agent spawning
+
+`spawnMultiAgent` accepts a list of agent specs and creates one `AgentRecord` per prompt. All records are created in the same process call and the full list of agent IDs is returned.
+
+```bash
+python3 -m src.main exec-tool spawnMultiAgent \
+  '{"agents": [{"prompt": "Task A"}, {"prompt": "Task B"}]}'
+# Output: {"spawned": 2, "agent_ids": ["agt-...", "agt-..."], "agents": [...]}
+```
+
+#### Team management
+
+`TeamCreateTool` and `TeamDeleteTool` manage `TeamRecord` entries in `stores._teams`.
+
+```bash
+python3 -m src.main exec-tool TeamCreateTool '{"name": "search-team"}'
+# Output: {"team_id": "tm-...", "name": "search-team"}
+
+python3 -m src.main exec-tool TeamDeleteTool '{"team_id": "tm-..."}'
+# Output: {"deleted": true, "team_id": "tm-..."}
+```
+
+#### Message routing
+
+`SendMessageTool` logs a message against a named team and returns a delivery confirmation. Messages are stored in-memory and visible within the same process.
+
+```bash
+python3 -m src.main exec-tool SendMessageTool '{"team": "search-team", "message": "task complete"}'
+# Output: {"delivered": true, "team": "search-team", "message": "task complete"}
+```
+
+### What does not work
+
+| Capability | Status | Notes |
+|------------|--------|-------|
+| Real LLM sub-process spawning | Not implemented | `AgentRecord.status` is set to `"pending"` or `"completed"` without any actual API call |
+| Actual LLM inference in subagents | Not implemented | `result` field in `runAgent` is a synthetic string, not real model output |
+| Memory persistence across restarts | Not implemented | All `AgentRecord`, `TeamRecord`, and message data lives in `stores._agents` / `stores._teams` which are plain dicts reset on every process start |
+| `resumeAgent` | Not implemented | No handler registered in `TOOL_DISPATCH` |
+| `agentMemory` / `agentMemorySnapshot` | Not implemented | No handlers; TypeScript-only at this stage |
+| Concurrent multi-agent execution | Not implemented | `spawnMultiAgent` creates records sequentially in a single thread |
+
+To extend agent tools with real LLM behaviour, integrate an Anthropic API client in `src/tool_implementations/agent_tools.py` and replace the `stores.complete_agent()` stub with an actual model call.
+
+---
+
+## 30. Architectural Summary
 
 ### The four layers of the agent harness
 

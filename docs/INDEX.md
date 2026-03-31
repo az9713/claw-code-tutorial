@@ -2,8 +2,8 @@
 
 Quick reference for all Claw Code documentation.
 
-> **Porting status: this is an architectural skeleton, not a complete implementation.**
-> All 207 commands and 184 tools are stubs that return placeholders. All 30 subsystem packages load only JSON metadata. `TeamCreateTool`, `TaskCreateTool`, all AgentTool modules, and `spawnMultiAgent` do nothing when called. The original TypeScript source is not included. See [Architecture § Porting Status](ARCHITECTURE.md#porting-status) for the full breakdown.
+> **Porting status: partial implementation — not a complete reimplementation.**
+> 33 of 184 tools and 17 of 207 commands now have real handlers (file I/O, bash execution, task/team/agent management, web fetching, cron scheduling, config, and session commands). The remaining 151 tools and 190 commands still return placeholder strings. All 30 subsystem packages load only JSON metadata. The original TypeScript source is not included. See [Architecture § Porting Status](ARCHITECTURE.md#porting-status) for the full breakdown, [TOOL_IMPLEMENTATIONS.md](TOOL_IMPLEMENTATIONS.md) for the tool handler reference, and [COMMAND_IMPLEMENTATIONS.md](COMMAND_IMPLEMENTATIONS.md) for the command handler reference.
 
 > **Two documentation suites exist in this repository:**
 > - `docs/` (this suite) — detailed reference documentation with full dataclass field tables, complete API signatures, and comprehensive examples.
@@ -38,6 +38,8 @@ Quick reference for all Claw Code documentation.
 | [Architecture](ARCHITECTURE.md) | System overview, terminology, bootstrap lifecycle, module map, data flow, streaming events, session lifecycle |
 | [API Reference](API_REFERENCE.md) | Every public class, method, and dataclass |
 | [Agents](AGENTS.md) | Everything about the agent harness: AgentTool, built-in agents, multi-agent infrastructure, task tools, coordinator mode, permissions |
+| [Tool Implementations](TOOL_IMPLEMENTATIONS.md) | The 33 real tool handlers: what each does, which store it touches, and how to add more |
+| [Command Implementations](COMMAND_IMPLEMENTATIONS.md) | The 17 real command handlers: what each returns and the dispatch mechanism |
 | [Study Plan](STUDY_PLAN.md) | Structured 7-phase reading plan for understanding the codebase inside out |
 
 ---

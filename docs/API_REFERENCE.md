@@ -959,3 +959,293 @@ print(assistant.MODULE_COUNT)   # 1
 print(utils.MODULE_COUNT)       # 564
 print(bridge.SAMPLE_FILES)      # ['bridgeApi.ts', 'bridgeMain.ts', ...]
 ```
+
+---
+
+## State Store (`src/stores.py`)
+
+In-memory runtime state for tasks, teams, agents, todos, cron entries, config values, and mode flags. All state is process-local and is reset when the process exits — nothing is written to disk.
+
+### Dataclasses
+
+All store records are `@dataclass(frozen=True)`. Use `dataclasses.replace()` to produce updated copies (the store functions do this internally).
+
+#### `TaskRecord`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `task_id` | `str` | 12-character hex UUID |
+| `name` | `str` | Short display name |
+| `description` | `str` | Longer task description |
+| `status` | `str` | `"pending"` \| `"in_progress"` \| `"completed"` \| `"stopped"` |
+| `output` | `str` | Captured task output (default `''`) |
+
+#### `TeamRecord`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `team_id` | `str` | 12-character hex UUID |
+| `name` | `str` | Team display name |
+| `member_names` | `tuple[str, ...]` | Ordered member names |
+
+#### `AgentRecord`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `agent_id` | `str` | 12-character hex UUID |
+| `prompt` | `str` | Prompt the agent was spawned with |
+| `status` | `str` | `"running"` \| `"completed"` |
+| `result` | `str` | Agent output once complete (default `''`) |
+| `parent_id` | `str` | ID of spawning agent, or `''` for root agents |
+
+#### `TodoItem`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `todo_id` | `str` | 12-character hex UUID |
+| `content` | `str` | Todo description text |
+| `done` | `bool` | Completion flag (default `False`) |
+
+#### `CronEntry`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `cron_id` | `str` | 12-character hex UUID |
+| `schedule` | `str` | Cron schedule expression (e.g. `"0 * * * *"`) |
+| `command` | `str` | Command string to run on schedule |
+
+---
+
+### Module-Level Stores
+
+The following module-level dicts hold live state. They are intentionally private (prefixed `_`); all access should go through the public CRUD functions below.
+
+| Variable | Type | Initial value |
+|----------|------|---------------|
+| `_tasks` | `dict[str, TaskRecord]` | `{}` |
+| `_teams` | `dict[str, TeamRecord]` | `{}` |
+| `_agents` | `dict[str, AgentRecord]` | `{}` |
+| `_todos` | `dict[str, TodoItem]` | `{}` |
+| `_crons` | `dict[str, CronEntry]` | `{}` |
+| `_config` | `dict[str, str]` | `{}` |
+| `_mode_flags` | `dict[str, bool]` | `{"plan_mode": False, "worktree_mode": False}` |
+
+State is **not persisted**. Restarting the process clears all stores.
+
+---
+
+### Task CRUD
+
+#### `create_task(name: str, description: str) -> TaskRecord`
+
+Creates a new task with `status='pending'` and an auto-generated `task_id`. Stores and returns the record.
+
+#### `get_task(task_id: str) -> TaskRecord | None`
+
+Returns the task for the given ID, or `None` if not found.
+
+#### `list_tasks() -> tuple[TaskRecord, ...]`
+
+Returns a snapshot of all tasks as an immutable tuple.
+
+#### `update_task(task_id: str, status: str) -> TaskRecord | None`
+
+Updates the `status` field. Returns the updated record, or `None` if the task does not exist.
+
+#### `record_task_output(task_id: str, output: str) -> TaskRecord | None`
+
+Stores output text against a task. Returns the updated record, or `None` if not found.
+
+#### `stop_task(task_id: str) -> TaskRecord | None`
+
+Convenience wrapper — calls `update_task(task_id, 'stopped')`.
+
+---
+
+### Team CRUD
+
+#### `create_team(name: str, members: list[str]) -> TeamRecord`
+
+Creates a team. `members` is stored as a `tuple[str, ...]`.
+
+#### `get_team(team_id: str) -> TeamRecord | None`
+
+Lookup by ID. Returns `None` if not found.
+
+#### `list_teams() -> tuple[TeamRecord, ...]`
+
+Returns all teams as a tuple.
+
+#### `delete_team(team_id: str) -> bool`
+
+Removes the team. Returns `True` if found and deleted, `False` if not found.
+
+---
+
+### Agent CRUD
+
+#### `create_agent(prompt: str, parent_id: str = '') -> AgentRecord`
+
+Spawns an agent record with `status='running'`. Optionally links to a parent agent via `parent_id`.
+
+#### `get_agent(agent_id: str) -> AgentRecord | None`
+
+Lookup by ID.
+
+#### `list_agents() -> tuple[AgentRecord, ...]`
+
+Returns all agent records.
+
+#### `complete_agent(agent_id: str, result: str) -> AgentRecord | None`
+
+Marks the agent `status='completed'` and records the `result`. Returns the updated record, or `None` if not found.
+
+---
+
+### Todo CRUD
+
+#### `create_todo(content: str) -> TodoItem`
+
+Creates a todo with `done=False`.
+
+#### `get_todo(todo_id: str) -> TodoItem | None`
+
+Lookup by ID.
+
+#### `list_todos() -> tuple[TodoItem, ...]`
+
+Returns all todo items.
+
+#### `complete_todo(todo_id: str) -> TodoItem | None`
+
+Sets `done=True`. Returns the updated item, or `None` if not found.
+
+#### `delete_todo(todo_id: str) -> bool`
+
+Removes the todo. Returns `True` on success, `False` if not found.
+
+---
+
+### Cron CRUD
+
+#### `create_cron(schedule: str, command: str) -> CronEntry`
+
+Registers a cron entry.
+
+#### `list_crons() -> tuple[CronEntry, ...]`
+
+Returns all cron entries.
+
+#### `delete_cron(cron_id: str) -> bool`
+
+Removes a cron entry. Returns `True` on success, `False` if not found.
+
+---
+
+### Config
+
+#### `get_config(key: str, default: str = '') -> str`
+
+Returns the config value for `key`, or `default` if not set.
+
+#### `set_config(key: str, value: str) -> None`
+
+Stores or overwrites a config value.
+
+#### `all_config() -> dict[str, str]`
+
+Returns a shallow copy of the entire config dict.
+
+---
+
+### Mode Flags
+
+Pre-seeded with `"plan_mode"` and `"worktree_mode"`, both defaulting to `False`.
+
+#### `get_mode_flag(key: str) -> bool`
+
+Returns the flag value, or `False` if the key has never been set.
+
+#### `set_mode_flag(key: str, value: bool) -> None`
+
+Sets a boolean mode flag.
+
+---
+
+## Tool Dispatcher (`src/tool_implementations/`)
+
+### `TOOL_DISPATCH: dict[str, Callable[[str], str]]`
+
+Maps tool names to handler callables. Each handler has the signature `(payload: str) -> str`. The dict is populated at import time by explicit assignments in `src/tool_implementations/__init__.py`.
+
+Registered tools (as of the current implementation):
+
+`BashTool`, `FileReadTool`, `FileWriteTool`, `FileEditTool`, `GlobTool`, `GrepTool`, `TaskCreateTool`, `TaskGetTool`, `TaskListTool`, `TaskUpdateTool`, `TaskOutputTool`, `TaskStopTool`, `TeamCreateTool`, `TeamDeleteTool`, `SendMessageTool`, `AgentTool`, `runAgent`, `forkSubagent`, `spawnMultiAgent`, `WebFetchTool`, `WebSearchTool`, `AskUserQuestionTool`, `TodoWriteTool`, `ConfigTool`, `ToolSearchTool`, `EnterPlanModeTool`, `ExitPlanModeV2Tool`, `EnterWorktreeTool`, `ExitWorktreeTool`, `NotebookEditTool`, `CronCreateTool`, `CronDeleteTool`, `CronListTool`
+
+### `dispatch_tool(name: str, payload: str) -> str | None`
+
+Looks up `name` in `TOOL_DISPATCH` and calls the registered handler with `payload`. Returns the handler's return value (a `str`), or `None` if no handler is registered for `name`.
+
+```python
+from src.tool_implementations import dispatch_tool
+
+result = dispatch_tool("BashTool", '{"command": "echo hello"}')
+# Returns the handler output string, or None if not registered
+```
+
+### Handler registration
+
+To add a handler, import it in `src/tool_implementations/__init__.py` and add an entry to `TOOL_DISPATCH`:
+
+```python
+from .my_tool import handle_my_tool
+
+TOOL_DISPATCH: dict[str, object] = {
+    # ... existing entries ...
+    "MyTool": handle_my_tool,
+}
+```
+
+### Relationship to `execute_tool()`
+
+`execute_tool()` in `src/tools.py` calls `dispatch_tool()` after resolving the tool name through the snapshot registry. If `dispatch_tool()` returns a non-`None` result, `execute_tool()` returns a `ToolExecution` with `handled=True` and that result as `message`. If `dispatch_tool()` returns `None` (no handler registered), `execute_tool()` falls back to a mirrored-tool placeholder message.
+
+---
+
+## Command Dispatcher (`src/command_implementations/`)
+
+### `COMMAND_DISPATCH: dict[str, Callable[[str], str]]`
+
+Maps slash-command names to handler callables. Each handler has the signature `(prompt: str) -> str`. Populated at import time in `src/command_implementations/__init__.py`.
+
+Registered commands (as of the current implementation):
+
+`help`, `version`, `clear`, `compact`, `status`, `cost`, `model`, `memory`, `session`, `summary`, `doctor`, `config`, `permissions`, `hooks`, `skills`, `mcp`, `tasks`
+
+### `dispatch_command(name: str, prompt: str) -> str | None`
+
+Looks up `name` in `COMMAND_DISPATCH` and calls the handler with `prompt`. Returns the handler's return value, or `None` if no handler is registered.
+
+```python
+from src.command_implementations import dispatch_command
+
+result = dispatch_command("help", "")
+# Returns the handler output string, or None if not registered
+```
+
+### Handler registration
+
+Import and add to `COMMAND_DISPATCH` in `src/command_implementations/__init__.py`:
+
+```python
+from .my_commands import handle_my_command
+
+COMMAND_DISPATCH: dict[str, object] = {
+    # ... existing entries ...
+    "my-command": handle_my_command,
+}
+```
+
+### Relationship to `execute_command()`
+
+`execute_command()` in `src/commands.py` calls `dispatch_command()` after resolving the command through the snapshot registry. A non-`None` result produces a `CommandExecution` with `handled=True`. A `None` result falls back to a mirrored-command placeholder message.

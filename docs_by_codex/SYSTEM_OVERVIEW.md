@@ -14,6 +14,8 @@
 - Mirrored command entries: 207 (`src/reference_data/commands_snapshot.json`)
 - Mirrored tool entries: 184 (`src/reference_data/tools_snapshot.json`)
 - CLI subcommands: 24 (`src/main.py`)
+- Tool handlers with real implementations: 33 (`src/tool_implementations/`, `TOOL_DISPATCH`)
+- Command handlers with real implementations: 17 (`src/command_implementations/`, `COMMAND_DISPATCH`)
 
 ## What It Does Well
 
@@ -21,14 +23,17 @@
 - Simulates runtime routing and turn flow (`PortRuntime`, `QueryEnginePort`)
 - Persists simple session state in JSON (`.port_sessions/`)
 - Gives fast visibility into parity posture (`parity-audit`)
+- Executes real file I/O — `FileReadTool`, `FileWriteTool`, `FileEditTool`, `GlobTool`, `GrepTool`, and `BashTool` perform actual filesystem and shell operations
+- Manages tasks, teams, agents, todos, crons, and config in an in-memory store (`src/stores.py`)
+- Fetches real web content via `WebFetchTool` and `WebSearchTool`
+- Routes 17 session and admin commands (`help`, `version`, `status`, `model`, `session`, `config`, and more) to real handlers
 
 ## What It Does Not Yet Do
 
-**This is a partial port — an architectural skeleton, not a complete implementation.**
+**This is a partial port — routing, sessions, and 33 tool / 17 command handlers are real; 151 tools and 190 commands remain as stubs.**
 
-- **Execute real tool/command logic** — all 207 commands and 184 tools return placeholder strings when called. `TeamCreateTool`, `TaskCreateTool`, all 18 AgentTool modules, `spawnMultiAgent`, `BashTool`, `FileReadTool`, `FileEditTool`, and every other named tool are stubs only.
-- **Run real agents** — `runAgent`, `forkSubagent`, `resumeAgent`, `spawnMultiAgent` are inventory entries; no agent execution happens.
-- **Create teams** — `TeamCreateTool`, `TeamDeleteTool`, and `SendMessageTool` do nothing when invoked.
+- **Execute logic for 151 remaining tools and 190 remaining commands** — anything not listed in `TOOL_DISPATCH` or `COMMAND_DISPATCH` still returns a placeholder string when called.
+- **Run real agents** — the agent tool handlers (`runAgent`, `forkSubagent`, `spawnMultiAgent`) record entries in the in-memory store but do not spawn real subprocesses or LLM calls. `resumeAgent` and `loadAgentsDir` remain inventory entries only.
 - **Implement subsystem logic** — all 30 packages (`utils`, `components`, `services`, `hooks`, etc.) load only JSON metadata; none contain ported code.
 - **Include the TypeScript archive** — the original source is expected at `archive/claude_code_ts_snapshot/src/` but is not present. `PortContext.archive_available` will be `False` on a fresh clone.
 - **Provide real remote/SSH/teleport connectivity** — mode simulators return placeholder reports only.
