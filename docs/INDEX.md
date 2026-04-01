@@ -18,6 +18,7 @@ Quick reference for all Claw Code documentation.
 | Document | What it covers |
 |----------|---------------|
 | [Quick Wins](QUICK_WINS.md) | **Start here** — setup + 5 quick wins for developers, curious users, and researchers |
+| [Verification Report](VERIFICATION_REPORT.md) | Audit of every QUICK_WINS.md command: exact outputs, fixes applied, what was skipped and why |
 | [Installation](INSTALLATION.md) | Full prerequisites, clone, verify, run tests |
 | [Troubleshooting](TROUBLESHOOTING.md) | Common errors and how to fix them |
 
