@@ -5,6 +5,8 @@
 **Repo:** `az9713/claw-code-tutorial` (clone of `instructkr/claw-code`)
 **Test suite baseline:** 134 tests, all passing before and after audit
 
+**Verification boundary:** this audit verifies behavior of the `instructkr/claw-code` clean-room Python port, not the original leaked TypeScript source.
+
 This document records every command from `docs/QUICK_WINS.md` that was actually executed,
 its exact output, whether it matched the documentation, and what action was taken when it did not.
 
@@ -43,7 +45,7 @@ $ python3 -m src.main summary
 
 # Python Porting Workspace Summary
 
-Port root: C:\Users\simon\Downloads\...\src
+Port root: <repo>/src
 Total Python files: 89
 
 Command surface: 207 mirrored entries

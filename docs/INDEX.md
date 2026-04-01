@@ -2,6 +2,8 @@
 
 Quick reference for all Claw Code documentation.
 
+> **Verification boundary:** all implementation and behavior claims in this documentation are scoped to the **`instructkr/claw-code` clean-room Python port** in this repository, not the original leaked TypeScript codebase.
+
 > **Porting status: partial implementation — not a complete reimplementation.**
 > 33 of 184 tools and 17 of 207 commands now have real handlers (file I/O, bash execution, task/team/agent management, web fetching, cron scheduling, config, and session commands). The remaining 151 tools and 190 commands still return placeholder strings. All 30 subsystem packages load only JSON metadata. The original TypeScript source is not included. See [Architecture § Porting Status](ARCHITECTURE.md#porting-status) for the full breakdown, [TOOL_IMPLEMENTATIONS.md](TOOL_IMPLEMENTATIONS.md) for the tool handler reference, and [COMMAND_IMPLEMENTATIONS.md](COMMAND_IMPLEMENTATIONS.md) for the command handler reference.
 

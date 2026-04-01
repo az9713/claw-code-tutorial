@@ -1,8 +1,10 @@
-# 360 Code Review Report (Modern AI Software)
+﻿# 360 Code Review Report (Modern AI Software)
 
 Date: March 31, 2026 (America/Los_Angeles)  
 Repository: `claw-code-main`  
 Reviewer: Codex (static + runtime-assisted review)
+
+**Verification boundary:** this review evaluates the `instructkr/claw-code` clean-room Python port in this repository. It does not claim to verify the original leaked TypeScript source directly.
 
 ## 1. Executive Summary
 
@@ -70,9 +72,9 @@ Likelihood: High
 Impact: Host compromise, data destruction/exfiltration, lateral movement
 
 Evidence:
-- [`src/tool_implementations/bash_tool.py:38`](/C:/Users/simon/Downloads/claude_code_leaked_collection/claw-code-main/src/tool_implementations/bash_tool.py:38)
-- [`src/tool_implementations/bash_tool.py:40`](/C:/Users/simon/Downloads/claude_code_leaked_collection/claw-code-main/src/tool_implementations/bash_tool.py:40)
-- [`src/tool_implementations/bash_tool.py:8`](/C:/Users/simon/Downloads/claude_code_leaked_collection/claw-code-main/src/tool_implementations/bash_tool.py:8)
+- [`src/tool_implementations/bash_tool.py:38`](../src/tool_implementations/bash_tool.py:38)
+- [`src/tool_implementations/bash_tool.py:40`](../src/tool_implementations/bash_tool.py:40)
+- [`src/tool_implementations/bash_tool.py:8`](../src/tool_implementations/bash_tool.py:8)
 
 Issue:
 - Uses `subprocess.run(..., shell=True)` with a short static denylist.
@@ -92,11 +94,11 @@ Likelihood: High
 Impact: Data theft, destructive writes, persistence manipulation
 
 Evidence:
-- [`src/tool_implementations/file_read_tool.py:20`](/C:/Users/simon/Downloads/claude_code_leaked_collection/claw-code-main/src/tool_implementations/file_read_tool.py:20)
-- [`src/tool_implementations/file_write_tool.py:20`](/C:/Users/simon/Downloads/claude_code_leaked_collection/claw-code-main/src/tool_implementations/file_write_tool.py:20)
-- [`src/tool_implementations/file_write_tool.py:23`](/C:/Users/simon/Downloads/claude_code_leaked_collection/claw-code-main/src/tool_implementations/file_write_tool.py:23)
-- [`src/tool_implementations/file_edit_tool.py:21`](/C:/Users/simon/Downloads/claude_code_leaked_collection/claw-code-main/src/tool_implementations/file_edit_tool.py:21)
-- [`src/tool_implementations/file_edit_tool.py:54`](/C:/Users/simon/Downloads/claude_code_leaked_collection/claw-code-main/src/tool_implementations/file_edit_tool.py:54)
+- [`src/tool_implementations/file_read_tool.py:20`](../src/tool_implementations/file_read_tool.py:20)
+- [`src/tool_implementations/file_write_tool.py:20`](../src/tool_implementations/file_write_tool.py:20)
+- [`src/tool_implementations/file_write_tool.py:23`](../src/tool_implementations/file_write_tool.py:23)
+- [`src/tool_implementations/file_edit_tool.py:21`](../src/tool_implementations/file_edit_tool.py:21)
+- [`src/tool_implementations/file_edit_tool.py:54`](../src/tool_implementations/file_edit_tool.py:54)
 
 Issue:
 - No workspace boundary or canonical path policy.
@@ -116,8 +118,8 @@ Likelihood: Medium-High
 Impact: Local file disclosure, internal service probing, data leakage
 
 Evidence:
-- [`src/tool_implementations/web_tools.py:14`](/C:/Users/simon/Downloads/claude_code_leaked_collection/claw-code-main/src/tool_implementations/web_tools.py:14)
-- [`src/tool_implementations/web_tools.py:19`](/C:/Users/simon/Downloads/claude_code_leaked_collection/claw-code-main/src/tool_implementations/web_tools.py:19)
+- [`src/tool_implementations/web_tools.py:14`](../src/tool_implementations/web_tools.py:14)
+- [`src/tool_implementations/web_tools.py:19`](../src/tool_implementations/web_tools.py:19)
 
 Verified behavior:
 - `urllib.request.urlopen()` accepts `file://` URIs and can read local files.
@@ -136,11 +138,11 @@ Likelihood: High
 Impact: Bypass of intended deny policies
 
 Evidence:
-- [`src/main.py:136`](/C:/Users/simon/Downloads/claude_code_leaked_collection/claw-code-main/src/main.py:136)
-- [`src/main.py:205`](/C:/Users/simon/Downloads/claude_code_leaked_collection/claw-code-main/src/main.py:205)
-- [`src/tools.py:56`](/C:/Users/simon/Downloads/claude_code_leaked_collection/claw-code-main/src/tools.py:56)
-- [`src/tools.py:81`](/C:/Users/simon/Downloads/claude_code_leaked_collection/claw-code-main/src/tools.py:81)
-- [`src/command_implementations/config_commands.py:34`](/C:/Users/simon/Downloads/claude_code_leaked_collection/claw-code-main/src/command_implementations/config_commands.py:34)
+- [`src/main.py:136`](../src/main.py:136)
+- [`src/main.py:205`](../src/main.py:205)
+- [`src/tools.py:56`](../src/tools.py:56)
+- [`src/tools.py:81`](../src/tools.py:81)
+- [`src/command_implementations/config_commands.py:34`](../src/command_implementations/config_commands.py:34)
 
 Issue:
 - Permission context filters visible tool lists, but `execute_tool()` path does not take/enforce context.
@@ -159,9 +161,9 @@ Likelihood: Medium
 Impact: Secret and private data disclosure
 
 Evidence:
-- [`src/tool_implementations/config_tool.py:27`](/C:/Users/simon/Downloads/claude_code_leaked_collection/claw-code-main/src/tool_implementations/config_tool.py:27)
-- [`src/command_implementations/session_commands.py:22`](/C:/Users/simon/Downloads/claude_code_leaked_collection/claw-code-main/src/command_implementations/session_commands.py:22)
-- [`src/session_store.py:23`](/C:/Users/simon/Downloads/claude_code_leaked_collection/claw-code-main/src/session_store.py:23)
+- [`src/tool_implementations/config_tool.py:27`](../src/tool_implementations/config_tool.py:27)
+- [`src/command_implementations/session_commands.py:22`](../src/command_implementations/session_commands.py:22)
+- [`src/session_store.py:23`](../src/session_store.py:23)
 
 Issue:
 - Config listing prints all keys/values.
@@ -182,8 +184,8 @@ Likelihood: Medium
 Impact: File corruption, uncontrolled content growth
 
 Evidence:
-- [`src/tool_implementations/file_edit_tool.py:16`](/C:/Users/simon/Downloads/claude_code_leaked_collection/claw-code-main/src/tool_implementations/file_edit_tool.py:16)
-- [`src/tool_implementations/file_edit_tool.py:46`](/C:/Users/simon/Downloads/claude_code_leaked_collection/claw-code-main/src/tool_implementations/file_edit_tool.py:46)
+- [`src/tool_implementations/file_edit_tool.py:16`](../src/tool_implementations/file_edit_tool.py:16)
+- [`src/tool_implementations/file_edit_tool.py:46`](../src/tool_implementations/file_edit_tool.py:46)
 
 Issue:
 - Empty `old_string` can trigger replacement across every insertion point.
@@ -197,9 +199,9 @@ Recommended remediation:
 
 ### M1. Resource exhaustion vectors (large reads/scans)
 Evidence:
-- [`src/tool_implementations/file_read_tool.py:20`](/C:/Users/simon/Downloads/claude_code_leaked_collection/claw-code-main/src/tool_implementations/file_read_tool.py:20)
-- [`src/tool_implementations/grep_tool.py:39`](/C:/Users/simon/Downloads/claude_code_leaked_collection/claw-code-main/src/tool_implementations/grep_tool.py:39)
-- [`src/tool_implementations/glob_tool.py:22`](/C:/Users/simon/Downloads/claude_code_leaked_collection/claw-code-main/src/tool_implementations/glob_tool.py:22)
+- [`src/tool_implementations/file_read_tool.py:20`](../src/tool_implementations/file_read_tool.py:20)
+- [`src/tool_implementations/grep_tool.py:39`](../src/tool_implementations/grep_tool.py:39)
+- [`src/tool_implementations/glob_tool.py:22`](../src/tool_implementations/glob_tool.py:22)
 
 Issue:
 - Entire file trees/files may be loaded into memory.
@@ -211,8 +213,8 @@ Remediation:
 
 ### M2. Concurrency and state isolation limitations
 Evidence:
-- [`src/stores.py:47`](/C:/Users/simon/Downloads/claude_code_leaked_collection/claw-code-main/src/stores.py:47)
-- [`src/stores.py:232`](/C:/Users/simon/Downloads/claude_code_leaked_collection/claw-code-main/src/stores.py:232)
+- [`src/stores.py:47`](../src/stores.py:47)
+- [`src/stores.py:232`](../src/stores.py:232)
 
 Issue:
 - Module-level mutable stores without locking or per-session isolation.
@@ -225,9 +227,9 @@ Remediation:
 
 ### M3. Test robustness and portability gaps
 Evidence:
-- [`tests/test_tool_implementations.py:46`](/C:/Users/simon/Downloads/claude_code_leaked_collection/claw-code-main/tests/test_tool_implementations.py:46)
-- [`tests/test_tool_implementations.py:49`](/C:/Users/simon/Downloads/claude_code_leaked_collection/claw-code-main/tests/test_tool_implementations.py:49)
-- [`src/setup.py:17`](/C:/Users/simon/Downloads/claude_code_leaked_collection/claw-code-main/src/setup.py:17)
+- [`tests/test_tool_implementations.py:46`](../tests/test_tool_implementations.py:46)
+- [`tests/test_tool_implementations.py:49`](../tests/test_tool_implementations.py:49)
+- [`src/setup.py:17`](../src/setup.py:17)
 
 Runtime results:
 - `pytest` run produced many `PermissionError` failures on Windows temp/cache paths.
@@ -241,8 +243,8 @@ Remediation:
 
 ### M4. SDLC automation missing in repo-visible config
 Evidence:
-- [`.github/FUNDING.yml`](/C:/Users/simon/Downloads/claude_code_leaked_collection/claw-code-main/.github/FUNDING.yml)
-- [`.gitignore:1`](/C:/Users/simon/Downloads/claude_code_leaked_collection/claw-code-main/.gitignore:1)
+- [`.github/FUNDING.yml`](../.github/FUNDING.yml)
+- [`.gitignore:1`](../.gitignore:1)
 
 Issue:
 - No visible CI workflows for lint/type/security/test.
@@ -256,8 +258,8 @@ Remediation:
 
 ### L1. Routing quality and resilience
 Evidence:
-- [`src/runtime.py:91`](/C:/Users/simon/Downloads/claude_code_leaked_collection/claw-code-main/src/runtime.py:91)
-- [`src/runtime.py:190`](/C:/Users/simon/Downloads/claude_code_leaked_collection/claw-code-main/src/runtime.py:190)
+- [`src/runtime.py:91`](../src/runtime.py:91)
+- [`src/runtime.py:190`](../src/runtime.py:190)
 
 Issue:
 - Token-substring scoring is simple and vulnerable to noisy/adversarial prompts.
@@ -269,9 +271,9 @@ Remediation:
 
 ### L2. Naming consistency and maintainability
 Evidence:
-- [`src/QueryEngine.py`](/C:/Users/simon/Downloads/claude_code_leaked_collection/claw-code-main/src/QueryEngine.py)
-- [`src/query_engine.py`](/C:/Users/simon/Downloads/claude_code_leaked_collection/claw-code-main/src/query_engine.py)
-- [`src/Tool.py`](/C:/Users/simon/Downloads/claude_code_leaked_collection/claw-code-main/src/Tool.py)
+- [`src/QueryEngine.py`](../src/QueryEngine.py)
+- [`src/query_engine.py`](../src/query_engine.py)
+- [`src/Tool.py`](../src/Tool.py)
 
 Issue:
 - Mixed naming conventions can create import confusion on case-sensitive platforms.
@@ -373,3 +375,4 @@ The most important next step is to convert documented intent (permissions, safet
 - NIST SSDF AI profile SP 800-218A: https://csrc.nist.gov/pubs/sp/800/218/a/final
 - SLSA specification: https://slsa.dev/spec/v1.0/terminology
 - ISO/IEC 42001 overview: https://www.iso.org/standard/42001
+
