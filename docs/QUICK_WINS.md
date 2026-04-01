@@ -239,17 +239,14 @@ The parity audit compares what's ported against the full 1,902-file TypeScript s
 python3 -m src.main parity-audit
 ```
 
-Output includes:
+Output (without the archive):
 
 ```
-Archive available: False
-Total Python files: 89
-Matched root files: N / 18
-Matched directories: N / 33
-Total file ratio: 0.047
+# Parity Audit
+Local archive unavailable; parity audit cannot compare against the original snapshot.
 ```
 
-`total_file_ratio` is `python_files / typescript_files`. The closer to 1.0, the more complete the port. Right now it's low — that's the gap left to fill. The audit logic is in `src/parity_audit.py`, and the mappings it checks are in `ARCHIVE_ROOT_FILES` and `ARCHIVE_DIR_MAPPINGS`.
+The archive is the original TypeScript source — it's not included in the repo. Without it, the audit reports that no comparison can be made. The audit logic is in `src/parity_audit.py`, and the mappings it would check are in `ARCHIVE_ROOT_FILES` (18 entries) and `ARCHIVE_DIR_MAPPINGS` (33 entries). These lists show exactly which Python modules mirror which TypeScript directories — useful even without the archive present.
 
 ---
 
@@ -459,9 +456,9 @@ Compare with the tool pool:
 
 ```bash
 python3 -m src.main tool-pool
-python3 -m src.main tool-pool --simple-mode   # BashTool, FileReadTool, FileEditTool only
-python3 -m src.main tool-pool --no-mcp        # exclude MCP tools
 ```
+
+This shows all 184 tools with their TypeScript `source_hint` paths.
 
 ---
 
@@ -504,19 +501,19 @@ The parity audit tells you exactly how much of the original Claude Code has been
 python3 -m src.main parity-audit
 ```
 
-Key fields to study:
+Without the TypeScript archive present, you'll see:
 
-| Field | What it means |
-|-------|--------------|
-| `total_python_files` | Python files in `src/` |
-| `total_archive_dirs` | TypeScript subsystem directories being tracked |
-| `matched_root_files` | Python mirror files that exist for root-level TS files |
-| `matched_directories` | Python packages that mirror TS subsystem directories |
-| `total_file_ratio` | `python_files / 1902_ts_files` — the overall coverage fraction |
-| `missing_root_targets` | Root-level TS files not yet mirrored |
-| `missing_directory_targets` | TS subsystem directories not yet ported |
+```
+# Parity Audit
+Local archive unavailable; parity audit cannot compare against the original snapshot.
+```
 
-The audit checks `ARCHIVE_ROOT_FILES` (18 mappings) and `ARCHIVE_DIR_MAPPINGS` (33 mappings) in `src/parity_audit.py`. Study those lists to understand which parts of Claude Code map to which Python modules.
+The archive (original TypeScript Claude Code) is not included in the repo. The audit requires it to perform a file-by-file comparison. Even without it, you can study `src/parity_audit.py` directly:
+
+- `ARCHIVE_ROOT_FILES` — 18 mappings from TypeScript root-level files to Python mirrors
+- `ARCHIVE_DIR_MAPPINGS` — 33 mappings from TypeScript subsystem directories to Python packages
+
+These lists are the definitive map of what was ported and what remains. Read them to understand the scope of the original system and where the gaps are.
 
 ---
 
