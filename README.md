@@ -1,5 +1,8 @@
 ﻿# Claw Code Tutorial (Claude/Opus Variant)
 
+> [!IMPORTANT]
+> **This repository is a clone-derived variant of the original [`instructkr/claw-code`](https://github.com/instructkr/claw-code), enhanced with expanded documentation and code experimentation.**
+
 > Minimal Claude Code style harness workspace, modified with Claude Code using Opus.
 
 ## Identity
@@ -68,3 +71,5 @@ Recommended:
 
 - This repository is an educational/tutorial reconstruction workspace.
 - It is not an official Anthropic repository and is not a full proprietary runtime replacement.
+
+
