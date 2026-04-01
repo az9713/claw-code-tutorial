@@ -1,5 +1,8 @@
 # Rewriting Project Claw Code
 
+> **This repository is a clone of [instructkr/claw-code](https://github.com/instructkr/claw-code), enhanced with comprehensive documentation and code experimentations.**
+> All credit for the original clean-room Python port goes to [@instructkr](https://github.com/instructkr). This fork adds a full documentation suite, real tool/command implementations, and a structured study plan.
+
 <p align="center">
   <img src="assets/clawd-hero.jpeg" alt="Claw" width="300" />
 </p>
